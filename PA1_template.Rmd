@@ -1,25 +1,128 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Peer Assessment 1"
+author: "Evandro Armelin"
+date: "8 de novembro de 2015"
+output: html_document
 ---
 
+This is a R Markdown document that describes the resolution and results of the Peer Assessment 1 of Reproducible Research course from Coursera
 
-## Loading and preprocessing the data
+The next sections of the documents will show the code chuncks and results of each analysis required by the Assessment
+
+##1. Loading and Processing the Data
+
+```{r, message=F, warning=F}
+#loading libraries
+library(Hmisc)
+library(ggplot2)
+library(timeDate)
+
+#define the working directory
+setwd("C:/Users/Evandro/Note_pessoal/Documentos - note pessoal/Evandro/Didáticos/Data Scientist/05. Reproducible Research/Week 2/Course Project 1")
+
+#read the original data
+data <- read.csv("repdata_data_activity/activity.csv")
+```
 
 
+##2. What is mean total number of steps taken per day?
 
-## What is mean total number of steps taken per day?
+###Histogram of Steps per Day
+```{r}
+#aggregate steps per day
+daysteps <- aggregate(data$steps, by = list(date=data$date), FUN = sum, na.rm = TRUE)
+
+#adjust variables names
+names(daysteps) <- c("Date", "Steps")
+
+hist(daysteps$Steps,
+     main = "Histogram of Steps per Day",
+     xlab = "Steps per Day",
+     col = "lightblue",
+     breaks = 10)
+```
+
+###Mean and median calculation
+```{r}
+mean(daysteps$Steps)
+median(daysteps$Steps)
+```
 
 
+##3. What is the average daily activity pattern?
 
-## What is the average daily activity pattern?
+###Calculating interval means through all the day
+```{r}
+intsteps <- aggregate(data$steps, by = list(data$interval), FUN = mean, na.rm = TRUE)
+names(intsteps) <- c("Interval", "Average_Steps")
+```
 
+###Plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days
+```{r}
+plot(intsteps$Interval,
+     intsteps$Average_Steps, type = "l",
+     main = "Average Steps for each Interval (across all the days)",
+     xlab = "Interval",
+     ylab = "Average Stepes",
+     col = "Red")
+```
 
+###Calculate the Interval with the maximun average of steps
+```{r}
+intsteps[which.max(intsteps$Average_Steps),]
+```
 
-## Imputing missing values
+##4. Imputing missing values
 
+###Calculate the total number of missing values in the dataset
+```{r}
+sum(!complete.cases(data))
+```
 
+###Imputing data for the NAs data in a new dataset equal to the original one
+```{r}
+completedata <- data
+completedata$steps <- impute(data$steps, fun = mean)
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
+###Histogram of Steps per Day for the Completed Data
+```{r}
+#aggregate steps per day
+completedatadaysteps <- aggregate(completedata$steps, by = list(date=completedata$date), FUN = sum, na.rm = TRUE)
+
+#adjust variables names
+names(completedatadaysteps) <- c("Date", "Steps")
+
+hist(completedatadaysteps$Steps,
+     main = "Histogram of Steps per Day (completed data)",
+     xlab = "Steps per Day",
+     col = "lightgreen",
+     breaks = 10)
+```
+
+###Mean and median calculation for the Completed Data
+```{r}
+mean <- c(mean(completedatadaysteps$Steps), mean(daysteps$Steps))
+median <- c(median(completedatadaysteps$Steps), median(daysteps$Steps))
+comp <- data.frame(rbind(mean, median))
+names(comp) <- c("Completed Data", "Original Data")
+comp
+
+```
+
+##5. Differences in activity patterns between weekdays and weekends
+
+###Calculating interval means through all the days, spliting in Weekday and Weekend
+```{r}
+#Creating factor variable to set Weekend and Weekday
+data$Weekday <- factor(c("Weekday", "Weekend"))
+data[isWeekend(data$date) == TRUE,4] <- "Weekend"
+data[isWeekend(data$date) != TRUE,4] <- "Weekday"
+
+intstepsweekday <- aggregate(data$steps, by = list(data$interval, data$Weekday), FUN = mean, na.rm = TRUE)
+names(intstepsweekday) <- c("Interval", "Weekday", "Average_Steps")
+```
+
+###Plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days, splited by Weekend and Weekday
+```{r}
+qplot(data = intstepsweekday, Interval, Average_Steps, facets = Weekday~., geom = "line", color = Weekday, ylab = "Average Steps")
